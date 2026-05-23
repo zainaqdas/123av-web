@@ -1,28 +1,23 @@
 import type { Metadata } from 'next';
-import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'StreamVault — Premium Video Streaming',
-    template: '%s | StreamVault',
+    default: 'FlixRush — Stream Unlimited',
+    template: '%s | FlixRush',
   },
-  description: 'Browse and stream premium videos with an elegant, modern interface.',
+  description: 'Stream premium videos with a sleek, modern interface. Browse thousands of titles and watch in HD.',
+  icons: { icon: '/favicon.ico' },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex flex-col">
+      <body className="min-h-screen flex flex-col bg-bg-primary text-text-primary">
         <Navbar />
-        <main className="flex-1 container mx-auto px-4 md:px-6 pt-20 pb-12">
-          {children}
-        </main>
+        <main className="flex-1 pt-16">{children}</main>
         <Footer />
       </body>
     </html>

@@ -1,102 +1,94 @@
 'use client';
-
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 
 interface VideoPlayerProps {
-  m3u8Url?: string;
+  m3u8Url: string;
   poster?: string;
   title?: string;
 }
 
 export default function VideoPlayer({ m3u8Url, poster, title }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
-
-  const destroyHls = useCallback(() => {
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-  }, []);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !m3u8Url) return;
+    if (!video) return;
 
-    destroyHls();
+    setError(null);
+    setLoading(true);
+
+    let hls: Hls | null = null;
 
     if (Hls.isSupported()) {
-      const hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: false,
-        backBufferLength: 90,
-      });
-      hlsRef.current = hls;
-
+      hls = new Hls({ enableWorker: true });
       hls.loadSource(m3u8Url);
       hls.attachMedia(video);
-
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {
-          // Autoplay may be blocked
-        });
+        setLoading(false);
+        video.play().catch(() => {});
       });
-
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
-              break;
-            default:
-              destroyHls();
-              break;
-          }
+          setError('Failed to load stream. Please try again later.');
+          setLoading(false);
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS
       video.src = m3u8Url;
-      video.addEventListener('loadedmetadata', () => {
+      video.addEventListener('loadedmetadata', () => setLoading(false));
+      video.addEventListener('canplay', () => {
+        setLoading(false);
         video.play().catch(() => {});
       });
+    } else {
+      setError('HLS playback is not supported in this browser.');
+      setLoading(false);
     }
 
     return () => {
-      destroyHls();
+      if (hls) {
+        hls.destroy();
+      }
     };
-  }, [m3u8Url, destroyHls]);
-
-  if (!m3u8Url) {
-    return (
-      <div className="video-container flex items-center justify-center">
-        <div className="text-center text-text-muted">
-          <svg className="w-16 h-16 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-          </svg>
-          <p className="text-lg font-medium">Stream not available</p>
-          <p className="text-sm mt-1">The video source could not be loaded. Try again later.</p>
-        </div>
-      </div>
-    );
-  }
+  }, [m3u8Url]);
 
   return (
     <div className="video-container">
+      {/* Loading spinner */}
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+            <p className="text-text-muted text-sm">Loading stream…</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black">
+          <div className="text-center">
+            <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-error/10 flex items-center justify-center">
+              <svg className="w-7 h-7 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-error font-medium text-sm">{error}</p>
+          </div>
+        </div>
+      )}
+
       <video
         ref={videoRef}
         poster={poster}
+        title={title}
         controls
         playsInline
         className="w-full h-full"
-        title={title}
-      >
-        <track kind="captions" />
-      </video>
+      />
     </div>
   );
 }

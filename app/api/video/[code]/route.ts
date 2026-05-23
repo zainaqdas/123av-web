@@ -9,10 +9,7 @@ export async function GET(
   try {
     const video = await getVideo(code);
     return NextResponse.json({ status: 200, result: video });
-  } catch (error) {
-    return NextResponse.json(
-      { status: 404, error: 'Video not found' },
-      { status: 404 }
-    );
+  } catch {
+    return NextResponse.json({ status: 404, error: 'Video not found' }, { status: 404 });
   }
 }

@@ -1,86 +1,75 @@
 'use client';
-
-import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export default function SearchBar() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const q = query.trim();
-      if (!q) return;
+  useEffect(() => {
+    if (open && inputRef.current) inputRef.current.focus();
+  }, [open]);
+
+  const submit = useCallback(() => {
+    const q = query.trim();
+    if (q) {
       router.push(`/search?q=${encodeURIComponent(q)}`);
       setOpen(false);
       setQuery('');
-    },
-    [query, router]
-  );
+    }
+  }, [query, router]);
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') { setOpen(false); setQuery(''); }
+    if (e.key === 'Enter') submit();
+  };
 
   return (
     <>
       {/* Desktop search icon */}
-      <button
-        onClick={() => setOpen(true)}
-        className="hidden md:flex w-9 h-9 items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all"
-        aria-label="Search"
-      >
+      <button onClick={() => setOpen(true)}
+        className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-bg-card border border-transparent hover:border-border transition-all duration-200">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <span className="text-text-muted">Search…</span>
+      </button>
+
+      {/* Mobile search icon */}
+      <button onClick={() => setOpen(true)}
+        className="md:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-card transition-colors">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
       </button>
 
-      {/* Mobile search link */}
-      <Link
-        href="/search"
-        className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      </Link>
-
-      {/* Search overlay */}
+      {/* Expanded search overlay */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <form
-            onSubmit={handleSubmit}
-            className="relative z-10 w-full max-w-xl bg-bg-card border border-border rounded-2xl shadow-2xl p-2 animate-fade-in"
-          >
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-text-muted ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="fixed inset-0 z-60 flex items-start justify-center pt-20 px-4" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative w-full max-w-lg animate-fade-in-up"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center bg-bg-card border border-border rounded-xl overflow-hidden shadow-2xl shadow-accent/5">
+              <svg className="w-5 h-5 ml-4 text-text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
+                ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search videos by title, code, actress..."
-                className="flex-1 bg-transparent text-text-primary placeholder-text-muted outline-none text-lg py-2"
-                autoFocus
+                onKeyDown={handleKey}
+                placeholder="Search for videos…"
+                className="flex-1 bg-transparent px-3 py-4 text-text-primary placeholder-text-muted outline-none text-base"
               />
-              <button
-                type="submit"
-                className="bg-accent hover:bg-accent-hover text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors"
-              >
+              <button onClick={submit}
+                className="px-4 py-4 text-accent hover:text-accent-hover font-medium text-sm transition-colors">
                 Search
               </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="text-text-muted hover:text-text-primary p-2 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </>

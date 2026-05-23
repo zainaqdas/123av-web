@@ -7,11 +7,11 @@ interface GenreBarProps {
 }
 
 export default function GenreBar({ genres, active }: GenreBarProps) {
-  const displayGenres = genres.slice(0, 15);
+  const limited = genres.slice(0, 20);
 
   return (
-    <div className="flex gap-2 flex-wrap">
-      {displayGenres.map((genre) => (
+    <div className="flex flex-wrap gap-2">
+      {limited.map((genre) => (
         <Link
           key={genre.slug}
           href={`/browse/${genre.slug}`}
@@ -20,11 +20,6 @@ export default function GenreBar({ genres, active }: GenreBarProps) {
           {genre.name}
         </Link>
       ))}
-      {genres.length > 15 && (
-        <span className="genre-tag text-text-muted">
-          +{genres.length - 15} more
-        </span>
-      )}
     </div>
   );
 }

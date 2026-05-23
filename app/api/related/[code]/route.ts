@@ -9,10 +9,7 @@ export async function GET(
   try {
     const related = await getRelatedVideos(code);
     return NextResponse.json({ status: 200, result: related });
-  } catch (error) {
-    return NextResponse.json(
-      { status: 500, error: 'Failed to fetch related videos' },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ status: 500, error: 'Failed to fetch related' }, { status: 500 });
   }
 }

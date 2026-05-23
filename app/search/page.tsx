@@ -1,118 +1,92 @@
-import { searchVideos } from '@/lib/api';
 import VideoGrid from '@/components/VideoGrid';
+import { VideoGridSkeleton } from '@/components/Skeleton';
+import { searchVideos } from '@/lib/api';
+import { localizeUrl } from '@/lib/utils';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }
 
-export const metadata = {
-  title: 'Search Videos',
-  description: 'Search the video library by title, code, actress, or keyword.',
-};
+export async function generateMetadata({ searchParams }: PageProps) {
+  const { q } = await searchParams;
+  return { title: q ? `Search: ${q}` : 'Search' };
+}
 
 export default async function SearchPage({ searchParams }: PageProps) {
-  const { q } = await searchParams;
-  const query = (q || '').trim();
-
-  let results: Awaited<ReturnType<typeof searchVideos>> | null = null;
-  let error = '';
-
-  if (query) {
-    try {
-      results = await searchVideos(query);
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Search failed';
-    }
-  }
+  const { q, page: pageStr } = await searchParams;
+  const query = q?.trim();
+  const page = parseInt(pageStr || '1', 10) || 1;
 
   return (
-    <div className="animate-fade-in space-y-8">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 text-text-muted text-sm mb-2">
-          <Link href="/" className="hover:text-text-primary transition-colors">Home</Link>
-          <span>/</span>
-          <span className="text-text-primary">Search</span>
-        </div>
-        <h1 className="text-3xl font-bold">Search Videos</h1>
-        <p className="text-text-secondary mt-1">Find videos by title, code, actress, or keyword</p>
+    <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-8 animate-fade-in">
+      <div className="flex items-center gap-2 text-sm text-text-muted mb-6">
+        <Link href="/" className="hover:text-text-primary transition-colors">Home</Link>
+        <span>/</span>
+        <span className="text-text-primary font-medium">Search</span>
       </div>
 
-      {/* Search Input (for direct navigation or refinement) */}
-      <form className="relative max-w-2xl">
-        <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <input
-          type="text"
-          name="q"
-          defaultValue={query}
-          placeholder="Search by video code, title, actress name..."
-          className="w-full bg-bg-card border border-border rounded-2xl pl-12 pr-4 py-3.5 text-text-primary placeholder-text-muted outline-none focus:border-accent/50 focus:ring-2 focus:ring-accent/20 transition-all text-lg"
-          autoFocus={!query}
-        />
-        <button
-          type="submit"
-          className="absolute right-2 top-1/2 -translate-y-1/2 bg-accent hover:bg-accent-hover text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors"
-        >
-          Search
-        </button>
-      </form>
+      {/* Search header with inline search form */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Search Videos</h1>
+        <p className="text-text-secondary mb-4">Find exactly what you&apos;re looking for</p>
+        <form className="flex gap-3 max-w-md" action="/search" method="GET">
+          <input
+            name="q" type="text" defaultValue={query || ''}
+            placeholder="Enter a video code or title…"
+            className="flex-1 bg-bg-card border border-border rounded-lg px-4 py-3 text-text-primary placeholder-text-muted outline-none focus:border-accent transition-colors"
+          />
+          <button type="submit"
+            className="px-6 py-3 rounded-lg bg-accent hover:bg-accent-hover text-white font-medium transition-colors">
+            Search
+          </button>
+        </form>
+      </div>
 
       {/* Results */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400">
-          {error}
-        </div>
-      )}
-
-      {query && !results && !error && (
-        <div className="space-y-4">
-          <p className="text-text-secondary">Searching...</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="space-y-3">
-                <div className="skeleton aspect-[2/3] w-full" />
-                <div className="skeleton h-4 w-3/4" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {results && results.videos.length > 0 && (
-        <section>
-          <p className="text-text-secondary mb-6">
-            Found {results.videos.length} results for &ldquo;{query}&rdquo;
-          </p>
-          <VideoGrid videos={results.videos} />
-        </section>
-      )}
-
-      {results && results.videos.length === 0 && (
-        <div className="text-center py-16">
-          <svg className="w-16 h-16 mx-auto text-text-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      {!query ? (
+        <div className="text-center py-20">
+          <svg className="w-16 h-16 mx-auto mb-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <h2 className="text-xl font-semibold mb-2">No results found</h2>
-          <p className="text-text-secondary">
-            No videos matched &ldquo;{query}&rdquo;. Try a different search term.
-          </p>
+          <p className="text-text-muted">Enter a search term above to find videos.</p>
         </div>
-      )}
-
-      {!query && (
-        <div className="text-center py-16">
-          <svg className="w-16 h-16 mx-auto text-text-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <h2 className="text-xl font-semibold mb-2">Search the library</h2>
-          <p className="text-text-secondary">Enter a video code, title, or keyword above to find videos.</p>
-        </div>
+      ) : (
+        <Suspense fallback={<VideoGridSkeleton count={12} />}>
+          <SearchResults query={query} page={page} />
+        </Suspense>
       )}
     </div>
   );
+}
+
+async function SearchResults({ query, page }: { query: string; page: number }) {
+  try {
+    const result = await searchVideos(query, page);
+    if (result.videos.length === 0) {
+      return (
+        <div className="text-center py-20">
+          <svg className="w-16 h-16 mx-auto mb-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p className="text-lg font-medium mb-1">No results found</p>
+          <p className="text-text-muted">No videos matched &quot;{query}&quot;. Try a different search term.</p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <p className="text-text-muted text-sm mb-5">{result.videos.length} results for &quot;{query}&quot;</p>
+        <VideoGrid videos={result.videos.map(localizeUrl)} />
+      </>
+    );
+  } catch {
+    return <p className="text-text-muted text-center py-16">Search failed. Please try again.</p>;
+  }
 }
