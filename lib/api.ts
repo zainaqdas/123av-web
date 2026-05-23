@@ -14,7 +14,7 @@ function getClient(): Client {
   if (!_client) {
     _client = new Client({
       timeout: 60000,
-      cacheTtl: 5 * 60 * 1000,
+      cacheTtl: 6 * 60 * 60 * 1000,
     });
   }
   return _client;
@@ -63,13 +63,18 @@ export async function searchVideos(query: string, page: number = 1): Promise<{
   try {
     const generator = getClient().search(query, { videoCount: 30, maxWorkers: 8 });
     for await (const video of generator) {
-      const attrs = await video.getAllAttributes();
+      // Only fetch lightweight attributes — skip m3u8 extraction (expensive browser launch)
+      const [title, thumbnail, duration] = await Promise.all([
+        video.getTitle(),
+        video.getThumbnail(),
+        video.getDuration(),
+      ]);
       results.push({
-        code: attrs.code,
-        title: attrs.title,
-        url: `/video/${attrs.code.toLowerCase()}`,
-        thumbnail: attrs.thumbnail || '',
-        duration: attrs.duration ? formatDuration(attrs.duration) : undefined,
+        code: video.code,
+        title,
+        url: `/video/${video.code.toLowerCase()}`,
+        thumbnail: thumbnail || '',
+        duration: duration ? formatDuration(duration) : undefined,
       });
     }
   } catch {
