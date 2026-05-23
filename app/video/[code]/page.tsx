@@ -1,8 +1,7 @@
-import VideoPlayer from '@/components/VideoPlayer';
+import StreamLoader from '@/components/StreamLoader';
 import VideoGrid from '@/components/VideoGrid';
-import GenreBar from '@/components/GenreBar';
 import { VideoDetailSkeleton, VideoGridSkeleton } from '@/components/Skeleton';
-import { getVideo, getRelatedVideos, getGenres } from '@/lib/api';
+import { getRelatedVideos } from '@/lib/api';
 import { formatDuration, localizeUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { Suspense } from 'react';
@@ -26,6 +25,14 @@ export default async function VideoPage({ params }: PageProps) {
 
   return (
     <div className="animate-fade-in">
+      {/* Player section — loads stream URL client-side so the page renders instantly */}
+      <section className="bg-black">
+        <div className="max-w-6xl mx-auto">
+          <StreamLoader code={code} />
+        </div>
+      </section>
+
+      {/* Metadata section — rendered server-side */}
       <Suspense fallback={<VideoDetailSkeleton />}>
         <VideoContent code={code} />
       </Suspense>
@@ -34,106 +41,76 @@ export default async function VideoPage({ params }: PageProps) {
 }
 
 async function VideoContent({ code }: { code: string }) {
+  const { getVideo } = await import('@/lib/api');
   try {
     const video = await getVideo(code);
     const upperCode = video.code || code.toUpperCase();
 
     return (
-      <>
-        {/* Player section */}
-        <section className="bg-black">
-          <div className="max-w-6xl mx-auto">
-            {video.m3u8Url ? (
-              <VideoPlayer m3u8Url={video.m3u8Url} poster={video.thumbnail} title={video.title} />
-            ) : (
-              <div className="video-container flex items-center justify-center">
-                <div className="text-center">
-                  <svg className="w-14 h-14 mx-auto mb-3 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-text-muted font-medium">Stream not available</p>
-                  <p className="text-text-muted text-sm mt-1">The video stream could not be loaded. Try again later.</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
+        {/* Back link */}
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors mb-6">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </Link>
 
-        {/* Metadata section */}
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
-          {/* Back link */}
-          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors mb-6">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back
-          </Link>
-
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Main info */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">
-                {video.title || upperCode}
-              </h1>
-              <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted mb-4">
-                <span className="font-mono text-accent font-semibold">{upperCode}</span>
-                {video.publishDate && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-text-muted" />
-                    <span>{new Date(video.publishDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                  </>
-                )}
-                {video.duration && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-text-muted" />
-                    <span>{formatDuration(video.duration)}</span>
-                  </>
-                )}
-              </div>
-
-              {/* Genres */}
-              {video.genres && video.genres.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {video.genres.map((genre) => (
-                    <Link key={genre} href={`/browse/${genre.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="genre-tag text-xs py-1.5 px-3">
-                      {genre}
-                    </Link>
-                  ))}
-                </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main info */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">
+              {video.title || upperCode}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-text-muted mb-4">
+              <span className="font-mono text-accent font-semibold">{upperCode}</span>
+              {video.publishDate && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-text-muted" />
+                  <span>{new Date(video.publishDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </>
               )}
-
-              {/* Extra details */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
-                {video.series && <Detail label="Series" value={video.series} />}
-                {video.manufacturer && <Detail label="Studio" value={video.manufacturer} />}
-                {video.actresses && video.actresses.length > 0 && (
-                  <Detail label="Cast" value={video.actresses.slice(0, 3).join(', ')} />
-                )}
-              </div>
+              {video.duration && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-text-muted" />
+                  <span>{formatDuration(video.duration)}</span>
+                </>
+              )}
             </div>
 
-            {/* Poster */}
-            {video.thumbnail && (
-              <div className="lg:w-64 shrink-0">
-                <div className="aspect-[2/3] rounded-xl overflow-hidden bg-bg-card border border-border">
-                  <img src={video.thumbnail} alt={video.title || upperCode}
-                    className="w-full h-full object-cover" />
-                </div>
+            {/* Genres */}
+            {video.genres && video.genres.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-6">
+                {video.genres.map((genre) => (
+                  <Link key={genre} href={`/browse/${genre.toLowerCase().replace(/\s+/g, '-')}`}
+                    className="genre-tag text-xs py-1.5 px-3">
+                    {genre}
+                  </Link>
+                ))}
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Related videos */}
-        <div className="max-w-screen-2xl mx-auto px-4 md:px-6 pb-16">
-          <h2 className="text-xl font-bold mb-5">Related Videos</h2>
-          <Suspense fallback={<VideoGridSkeleton count={6} />}>
-            <RelatedGrid code={code} />
-          </Suspense>
+            {/* Extra details */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">
+              {video.series && <Detail label="Series" value={video.series} />}
+              {video.manufacturer && <Detail label="Studio" value={video.manufacturer} />}
+              {video.actresses && video.actresses.length > 0 && (
+                <Detail label="Cast" value={video.actresses.slice(0, 3).join(', ')} />
+              )}
+            </div>
+          </div>
+
+          {/* Poster */}
+          {video.thumbnail && (
+            <div className="lg:w-64 shrink-0">
+              <div className="aspect-[2/3] rounded-xl overflow-hidden bg-bg-card border border-border">
+                <img src={video.thumbnail} alt={video.title || upperCode}
+                  className="w-full h-full object-cover" />
+              </div>
+            </div>
+          )}
         </div>
-      </>
+      </div>
     );
   } catch {
     return (
